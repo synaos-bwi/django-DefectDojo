@@ -1219,27 +1219,22 @@ def get_jira_issue_from_jira(find):
 
 
 def issue_from_jira_is_active(issue_from_jira):
-    #         "resolution":{
-    #             "self":"http://www.testjira.com/rest/api/2/resolution/11",
-    #             "id":"11",
-    #             "description":"Cancelled by the customer.",
-    #             "name":"Cancelled"
-    #         },
-
-    # or
-    #         "resolution": null
-
-    # or
-    #         "resolution": "None"
-
-    if not hasattr(issue_from_jira.fields, "resolution"):
-        logger.debug(vars(issue_from_jira))
+    if hasattr(issue_from_jira, "fields") and hasattr(issue_from_jira.fields, "status") and hasattr(issue_from_jira.fields.status, "statusCategory") and hasattr(issue_from_jira.fields.status.statusCategory, "key"):
+        key = issue_from_jira.fields.status.statusCategory.key
+        match key:
+            case "new" | "indeterminate":
+                logger.debug("Jira issue status category is '%s', treating as active", key)
+                return True
+            case "done":
+                logger.debug("Jira issue status category is 'done', treating as inactive")
+                return False
+            case "undefined":
+                logger.debug("Jira issue status category is 'undefined', no decision possible")
+        
+    # the statusCategory is note specified or "undefined", checking if a resolution is set
+    if not hasattr(issue_from_jira, "fields") or not hasattr(issue_from_jira.fields, "resolution") or not issue_from_jira.fields.resolution:
+        logger.debug("No resolution found, treating as active")
         return True
-
-    if not issue_from_jira.fields.resolution:
-        return True
-
-    # some kind of resolution is present that is not null or None
     return issue_from_jira.fields.resolution == "None"
 
 
